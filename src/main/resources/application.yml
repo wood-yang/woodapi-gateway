@@ -1,0 +1,21 @@
+server:
+  port: 8091
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: add_request_header_route
+          uri: http://localhost:8123
+          predicates:
+            - Path=/api/**
+          filters:
+            - AddRequestHeader=game, HuntShowdown
+            - AddRequestHeader=methodMB, POST
+#            - AddRequestParameter=name, mafeifei
+logging:
+  level:
+    org:
+      springframework:
+        cloud:
+          gateway: trace
