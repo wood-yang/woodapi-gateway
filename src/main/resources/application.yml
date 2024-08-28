@@ -5,14 +5,10 @@ spring:
   cloud:
     gateway:
       routes:
-        - id: add_request_header_route
+        - id: api_route
           uri: http://localhost:8123
           predicates:
             - Path=/api/**
-          filters:
-            - AddRequestHeader=game, HuntShowdown
-            - AddRequestHeader=methodMB, POST
-#            - AddRequestParameter=name, mafeifei
 logging:
   level:
     org:
