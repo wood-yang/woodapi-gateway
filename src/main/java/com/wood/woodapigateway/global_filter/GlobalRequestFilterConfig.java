@@ -1,15 +1,15 @@
-package com.wood.woodapigateway;
+package com.wood.woodapigateway.global_filter;
 
 import com.wood.woodapiclientsdk.utils.SignUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
@@ -19,16 +19,17 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 全局过滤
+ * 全局请求过滤
  */
 @Slf4j
-@Component
-public class CustomGlobalFilter implements GlobalFilter, Ordered {
+@Configuration
+public class GlobalRequestFilterConfig implements GlobalFilter, Ordered {
 
     private final static List<String> IP_WHITE_LIST = Arrays.asList("127.0.0.1");
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        log.info("global request filter");
         // 1. 日志
         ServerHttpRequest serverHttpRequest = exchange.getRequest();
         System.out.println("请求唯一标识：" + serverHttpRequest.getId());
@@ -75,20 +76,7 @@ public class CustomGlobalFilter implements GlobalFilter, Ordered {
         // 4. 请求的模拟接口是否存在?
         // todo 从数据库中查询模拟接口是否存在，以及请求方法是否匹配
         // 5. 请求转发，调用模拟接口
-        Mono<Void> filter = chain.filter(exchange);
-        // 6. 响应日志
-        HttpStatus statusCode = response.getStatusCode();
-        log.info("statusCode: " + statusCode);
-        // 7. todo 调用成功，接口调用次数 +1 invokeCount
-        // 8. 调用失败，返回一个规范的错误码
-        if (statusCode == HttpStatus.OK) {
-
-        }
-        else {
-            return handlerInvokeError(response);
-        }
-        log.info("custom global filter");
-        return filter;
+        return chain.filter(exchange);
     }
 
     public Mono<Void> handlerNoAuth(ServerHttpResponse response) {
@@ -96,13 +84,8 @@ public class CustomGlobalFilter implements GlobalFilter, Ordered {
         return response.setComplete();
     }
 
-    public Mono<Void> handlerInvokeError(ServerHttpResponse response) {
-        response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
-        return response.setComplete();
-    }
-
     @Override
     public int getOrder() {
-        return -1;
+        return -3;
     }
 }
