@@ -5,6 +5,7 @@ import com.wood.common.model.entity.User;
 import com.wood.woodapiclientsdk.utils.SignUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboReference;
+import org.springframework.beans.BeanUtils;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +25,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * 全局请求过滤
@@ -44,18 +46,19 @@ public class GlobalRequestFilterConfig implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         log.info("global request filter");
         // 1. 日志
-        ServerHttpRequest serverHttpRequest = exchange.getRequest();
-        System.out.println("请求唯一标识：" + serverHttpRequest.getId());
-        InetSocketAddress remoteAddress = serverHttpRequest.getRemoteAddress();
+        ServerHttpRequest request = exchange.getRequest();
+        ServerHttpRequest newRequest = request.mutate().headers(HttpHeaders::entrySet).path("/myPath").build();
+        System.out.println("请求唯一标识：" + request.getId());
+        InetSocketAddress remoteAddress = request.getRemoteAddress();
         String address = remoteAddress.getAddress().toString();
         String hostName = remoteAddress.getHostName();
         System.out.println("请求来源：" + remoteAddress);
-        System.out.println("请求目的地：" + serverHttpRequest.getLocalAddress());
-        System.out.println("请求方法：" + serverHttpRequest.getMethod());
-        String path = serverHttpRequest.getPath().toString();
+        System.out.println("请求目的地：" + request.getLocalAddress());
+        System.out.println("请求方法：" + request.getMethod());
+        String path = request.getPath().toString();
         System.out.println("请求路径：" + path);
-        System.out.println("请求参数：" + serverHttpRequest.getQueryParams());
-        String uri = serverHttpRequest.getURI().toString();
+        System.out.println("请求参数：" + request.getQueryParams());
+        String uri = request.getURI().toString();
         System.out.println("请求 uri：" + uri);
 
         // 2. (黑白名单)
@@ -64,7 +67,7 @@ public class GlobalRequestFilterConfig implements GlobalFilter, Ordered {
             return handlerNoAuth(response);
         }
         // 3. 用户鉴权(判断 ak、 sk 是否合法)
-        HttpHeaders httpHeaders = serverHttpRequest.getHeaders();
+        HttpHeaders httpHeaders = request.getHeaders();
         String accessKey = httpHeaders.getFirst("accessKey");
         String nonce = httpHeaders.getFirst("nonce");
         String timestamp = httpHeaders.getFirst("timestamp");
@@ -76,6 +79,7 @@ public class GlobalRequestFilterConfig implements GlobalFilter, Ordered {
         if (user == null || user.getAccessKey() == null) {
             return handlerNoAuth(response);
         }
+
         if (nonce == null || Long.parseLong(nonce) > 10000) {
             return handlerNoAuth(response);
         }
@@ -95,12 +99,19 @@ public class GlobalRequestFilterConfig implements GlobalFilter, Ordered {
         }
 
         // 从数据库中查询模拟接口是否存在，以及请求方法是否匹配
-        InterfaceInfo interfaceInfo = innerInterfaceInfoService.getInterfaceInfoByUriAndPath(uri, path);
+        InterfaceInfo interfaceInfo = innerInterfaceInfoService.getInterfaceInfoByUri(uri);
         if (interfaceInfo == null) {
             return handlerNoAuth(response);
         }
+        // todo 去数据库中查看用户是否还具有目标接口的可调用次数
+
+
         // 5. 请求转发，调用模拟接口
-        return chain.filter(exchange);
+        // 把查到的 用户id 和 接口id 保存在请求头中，如果接口调用成功就让他去执行增加次数的逻辑
+        request = exchange.getRequest().mutate().header("userId", user.getId().toString()).header("interfaceInfoId", interfaceInfo.getId().toString()).build();
+        //把新的 exchange放回到过滤链
+        return chain.filter(exchange.mutate().request(request).build());
+//        return chain.filter(exchange);
     }
 
     public Mono<Void> handlerNoAuth(ServerHttpResponse response) {

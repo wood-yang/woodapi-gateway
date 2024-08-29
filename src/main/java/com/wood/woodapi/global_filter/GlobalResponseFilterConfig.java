@@ -7,10 +7,14 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+
+import java.util.function.Supplier;
 
 @Slf4j
 @Configuration
@@ -31,7 +35,11 @@ public class GlobalResponseFilterConfig implements GlobalFilter, Ordered {
             // todo 怎么定义失败，一个就是根本就发过去，或者其他异常，也有可能是业务问题 出bug了 导致虽然OK 200 了 但是数据是不对的
             // 8. 调用失败，返回一个规范的错误码
             if (statusCode == HttpStatus.OK) {
-                innerUserInterfaceInfoService.invokeCount(1L, 1L);
+                ServerHttpRequest request = exchange.getRequest();
+                HttpHeaders headers = request.getHeaders();
+                String userId = headers.getFirst("userId");
+                String interfaceInfoId = headers.getFirst("interfaceInfoId");
+                innerUserInterfaceInfoService.invokeCount(Long.parseLong(userId), Long.parseLong(interfaceInfoId));
             }
             else {
                 response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);

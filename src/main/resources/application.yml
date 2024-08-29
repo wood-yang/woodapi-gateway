@@ -9,6 +9,7 @@ spring:
           uri: http://localhost:8123
           predicates:
             - Path=/api/**
+
 #    nacos:
 #      discovery:
 #        server-addr: 127.0.0.1:8848
