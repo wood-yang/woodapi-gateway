@@ -1,12 +1,19 @@
 package com.wood.woodapi.global_filter;
 
+import com.wood.common.model.entity.InterfaceInfo;
+import com.wood.common.model.entity.User;
+import com.wood.woodapiclientsdk.utils.SignUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import com.wood.common.service.*;
+import com.wood.common.service.InnerInterfaceInfoService;
+import org.springframework.http.server.RequestPath;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.server.ServerWebExchange;
@@ -14,6 +21,7 @@ import reactor.core.publisher.Mono;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 
@@ -24,6 +32,12 @@ import java.util.List;
 @Configuration
 public class GlobalRequestFilterConfig implements GlobalFilter, Ordered {
 
+    @DubboReference
+    private InnerUserService innerUserService;
+
+    @DubboReference
+    private InnerInterfaceInfoService innerInterfaceInfoService;
+
     private final static List<String> IP_WHITE_LIST = Arrays.asList("127.0.0.1");
 
     @Override
@@ -33,14 +47,16 @@ public class GlobalRequestFilterConfig implements GlobalFilter, Ordered {
         ServerHttpRequest serverHttpRequest = exchange.getRequest();
         System.out.println("请求唯一标识：" + serverHttpRequest.getId());
         InetSocketAddress remoteAddress = serverHttpRequest.getRemoteAddress();
-        InetAddress address = remoteAddress.getAddress();
+        String address = remoteAddress.getAddress().toString();
         String hostName = remoteAddress.getHostName();
         System.out.println("请求来源：" + remoteAddress);
         System.out.println("请求目的地：" + serverHttpRequest.getLocalAddress());
         System.out.println("请求方法：" + serverHttpRequest.getMethod());
-        System.out.println("请求路径：" + serverHttpRequest.getPath());
+        String path = serverHttpRequest.getPath().toString();
+        System.out.println("请求路径：" + path);
         System.out.println("请求参数：" + serverHttpRequest.getQueryParams());
-        System.out.println("请求 uri：" + serverHttpRequest.getURI());
+        String uri = serverHttpRequest.getURI().toString();
+        System.out.println("请求 uri：" + uri);
 
         // 2. (黑白名单)
         ServerHttpResponse response = exchange.getResponse();
@@ -54,8 +70,10 @@ public class GlobalRequestFilterConfig implements GlobalFilter, Ordered {
         String timestamp = httpHeaders.getFirst("timestamp");
         String sign = httpHeaders.getFirst("sign");
         String body = httpHeaders.getFirst("body");
-        // todo 实际情况应该是去数据库中查看用户是否具有accessKey
-        if (!"6ee5840c98ddda30c686343405484939".equals(accessKey)) {
+        // 去数据库中查看用户是否具有accessKey
+        User user = innerUserService.getUserByAccessKey(accessKey);
+
+        if (user == null || user.getAccessKey() == null) {
             return handlerNoAuth(response);
         }
         if (nonce == null || Long.parseLong(nonce) > 10000) {
@@ -67,13 +85,20 @@ public class GlobalRequestFilterConfig implements GlobalFilter, Ordered {
         if (timestamp == null || current - Long.parseLong(timestamp) > FIVE_MINUTES) {
             return handlerNoAuth(response);
         }
-        // todo 实际情况中是从服务器查出 secertKey
-//        if (!SignUtils.getSign(body, "4c72e368e9dc1b5495943c48ee1ecb25").equals(sign)) {
-//            return handlerNoAuth(response);
-//        }
+        // 验证 sign
+        String secretKey = user.getSecretKey();
+        if (secretKey == null) {
+            return handlerNoAuth(response);
+        }
+        if (!SignUtils.getSign(body, secretKey).equals(sign)) {
+            return handlerNoAuth(response);
+        }
 
-        // 4. 请求的模拟接口是否存在?
-        // todo 从数据库中查询模拟接口是否存在，以及请求方法是否匹配
+        // 从数据库中查询模拟接口是否存在，以及请求方法是否匹配
+        InterfaceInfo interfaceInfo = innerInterfaceInfoService.getInterfaceInfoByUriAndPath(uri, path);
+        if (interfaceInfo == null) {
+            return handlerNoAuth(response);
+        }
         // 5. 请求转发，调用模拟接口
         return chain.filter(exchange);
     }
