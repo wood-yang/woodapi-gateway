@@ -9,9 +9,39 @@ spring:
           uri: http://localhost:8123
           predicates:
             - Path=/api/**
+#    nacos:
+#      discovery:
+#        server-addr: 127.0.0.1:8848
 logging:
   level:
     org:
       springframework:
         cloud:
           gateway: trace
+
+dubbo:
+  application:
+    #设置应用的名称
+    name: dubbo-springboot-consumer
+    #qos监控服务是否启动
+    qos-enable: true
+    #qos监控服务端口
+    qos-port: 23456
+    qos-accept-foreign-ip: false
+
+  #指定使用Dubbo协议，且端口设置为-1，表示随机分配可用端口
+  protocol:
+    name: dubbo
+    port: -1
+  registry:
+    #配置注册中心为Nacos
+    id: nacos-registry
+    address: nacos://localhost:8848
+    username: nacos
+    password: nacos
+    parameters:
+      namespace: 72274348-f2dd-4049-8f92-3609f5122748   #nacos命名空间
+    group: dubbo-gateway   #nacos分组
+  config-center:
+    timeout: 40000 #设置服务超时时间
+#    file: "dubbo-registry/dubbo-registry.properties"

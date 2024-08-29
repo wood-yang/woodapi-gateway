@@ -1,6 +1,5 @@
-package com.wood.woodapigateway.global_filter;
+package com.wood.woodapi.global_filter;
 
-import com.wood.woodapiclientsdk.utils.SignUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -69,9 +68,9 @@ public class GlobalRequestFilterConfig implements GlobalFilter, Ordered {
             return handlerNoAuth(response);
         }
         // todo 实际情况中是从服务器查出 secertKey
-        if (!SignUtils.getSign(body, "4c72e368e9dc1b5495943c48ee1ecb25").equals(sign)) {
-            return handlerNoAuth(response);
-        }
+//        if (!SignUtils.getSign(body, "4c72e368e9dc1b5495943c48ee1ecb25").equals(sign)) {
+//            return handlerNoAuth(response);
+//        }
 
         // 4. 请求的模拟接口是否存在?
         // todo 从数据库中查询模拟接口是否存在，以及请求方法是否匹配

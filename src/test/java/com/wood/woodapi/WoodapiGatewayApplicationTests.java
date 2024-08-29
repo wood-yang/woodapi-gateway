@@ -1,4 +1,4 @@
-package com.wood.woodapigateway;
+package com.wood.woodapi;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
