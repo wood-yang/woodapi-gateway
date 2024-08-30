@@ -29,7 +29,6 @@ dubbo:
     #qos监控服务端口
     qos-port: 23456
     qos-accept-foreign-ip: false
-
   #指定使用Dubbo协议，且端口设置为-1，表示随机分配可用端口
   protocol:
     name: dubbo
@@ -41,8 +40,8 @@ dubbo:
     username: nacos
     password: nacos
 #    parameters:
-#      namespace: 72274348-f2dd-4049-8f92-3609f5122748   #nacos命名空间
-#    group: dubbo-gateway   #nacos分组
+#      namespace: a35a3762-46af-4519-bf50-cffbddb21a8d   #nacos命名空间
+#      group: dubbo-gateway   #nacos分组
   config-center:
     timeout: 40000 #设置服务超时时间
-  namingCacheRegistryDir: C:\Users\24420\.dubbo\gateway
+  namingCacheRegistryDir: gateway

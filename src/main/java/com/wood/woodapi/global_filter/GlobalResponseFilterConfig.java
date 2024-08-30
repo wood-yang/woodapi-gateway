@@ -25,6 +25,7 @@ public class GlobalResponseFilterConfig implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+//        return chain.filter(exchange).then(Mono.fromRunnable(() -> {
         return chain.filter(exchange).then(Mono.fromRunnable(() -> {
             log.info("global response filter");
             ServerHttpResponse response = exchange.getResponse();

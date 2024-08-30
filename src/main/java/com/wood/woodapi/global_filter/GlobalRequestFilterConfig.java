@@ -40,29 +40,29 @@ public class GlobalRequestFilterConfig implements GlobalFilter, Ordered {
     @DubboReference
     private InnerInterfaceInfoService innerInterfaceInfoService;
 
+    @DubboReference
+    private InnerUserInterfaceInfoService innerUserInterfaceInfoService;
+
     private final static List<String> IP_WHITE_LIST = Arrays.asList("127.0.0.1");
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        log.info("global request filter");
         // 1. 日志
+        log.info("global request filter");
+
         ServerHttpRequest request = exchange.getRequest();
-        ServerHttpRequest newRequest = request.mutate().headers(HttpHeaders::entrySet).path("/myPath").build();
-        System.out.println("请求唯一标识：" + request.getId());
-        InetSocketAddress remoteAddress = request.getRemoteAddress();
-        String address = remoteAddress.getAddress().toString();
-        String hostName = remoteAddress.getHostName();
-        System.out.println("请求来源：" + remoteAddress);
-        System.out.println("请求目的地：" + request.getLocalAddress());
-        System.out.println("请求方法：" + request.getMethod());
-        String path = request.getPath().toString();
-        System.out.println("请求路径：" + path);
-        System.out.println("请求参数：" + request.getQueryParams());
-        String uri = request.getURI().toString();
-        System.out.println("请求 uri：" + uri);
 
         // 2. (黑白名单)
+        InetSocketAddress remoteAddress = request.getRemoteAddress();
         ServerHttpResponse response = exchange.getResponse();
+        if (remoteAddress == null) {
+            return handlerNoAuth(response);
+        }
+        String hostName = remoteAddress.getHostName();
+
+        String uri = request.getURI().toString();
+
+
         if (!IP_WHITE_LIST.contains(hostName)) {
             return handlerNoAuth(response);
         }
@@ -103,9 +103,10 @@ public class GlobalRequestFilterConfig implements GlobalFilter, Ordered {
         if (interfaceInfo == null) {
             return handlerNoAuth(response);
         }
-        // todo 去数据库中查看用户是否还具有目标接口的可调用次数
-
-
+        // 去数据库中查看用户是否还具有目标接口的可调用次数
+        if (!innerUserInterfaceInfoService.isEnough(user.getId(), interfaceInfo.getId())) {
+            return handlerNoAuth(response);
+        }
         // 5. 请求转发，调用模拟接口
         // 把查到的 用户id 和 接口id 保存在请求头中，如果接口调用成功就让他去执行增加次数的逻辑
         request = exchange.getRequest().mutate().header("userId", user.getId().toString()).header("interfaceInfoId", interfaceInfo.getId().toString()).build();
