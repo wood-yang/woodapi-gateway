@@ -63,11 +63,6 @@
             <artifactId>woodapi-common</artifactId>
             <version>0.0.1</version>
         </dependency>
-        <dependency>
-            <groupId>com.wood</groupId>
-            <artifactId>woodapi-client-sdk</artifactId>
-            <version>0.0.1</version>
-        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>
